@@ -1,0 +1,18 @@
+spring:
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/workflow_db}
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+server:
+  port: 8080
+
+jwt:
+  secret: c3VwZXJzZWNyZXRrZXlmb3Jqd3R0b2tlbmF1dGhlbnRpY2F0aW9uMjAyNA==
+  expiration: 86400000
+
+logging:
+  level:
+    com.workflow.bpm: DEBUG
+    org.springframework.security: DEBUG
