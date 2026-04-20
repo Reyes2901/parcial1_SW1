@@ -1,10 +1,11 @@
 package com.workflow.bpm.policy;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,49 +14,96 @@ import java.util.List;
 @RequestMapping("/api/policies")
 @RequiredArgsConstructor
 public class PolicyController {
-    
-    private final PolicyService policyService;
-    
+
+    private final PolicyService service;
+
+    // Solo ADMIN puede crear políticas
     @PostMapping
-    public ResponseEntity<ProcessDefinition> create(@RequestBody ProcessDefinition policy) {
-        String username = getCurrentUsername();
-        ProcessDefinition created = policyService.create(policy, username);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProcessDefinition> create(
+            @Valid @RequestBody ProcessDefinition def,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.status(201).body(service.create(def, user.getUsername()));
     }
-    
-    @GetMapping
-    public List<ProcessDefinition> getAll() {
-        return policyService.findAll();
-    }
-    
-    @GetMapping("/active")
-    public List<ProcessDefinition> getActive() {
-        return policyService.findActive();
-    }
-    
-    @GetMapping("/{id}")
-    public ProcessDefinition getById(@PathVariable String id) {
-        return policyService.findById(id);
-    }
-    
+
+    // Solo ADMIN puede actualizar políticas
     @PutMapping("/{id}")
-    public ProcessDefinition update(@PathVariable String id, @RequestBody ProcessDefinition policy) {
-        return policyService.update(id, policy);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProcessDefinition> update(
+            @PathVariable String id,
+            @Valid @RequestBody ProcessDefinition def,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(service.update(id, def, user.getUsername()));
     }
-    
+
+    // Publicar: valida el grafo y cambia status a PUBLISHED/ACTIVE
+    @PostMapping("/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProcessDefinition> publish(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(service.publish(id, user.getUsername()));
+    }
+
+    // Activar (alias de publish)
     @PostMapping("/{id}/activate")
-    public ProcessDefinition activate(@PathVariable String id) {
-        return policyService.activate(id);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProcessDefinition> activate(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(service.activate(id, user.getUsername()));
     }
-    
+
+    // Archivar
+    @PostMapping("/{id}/archive")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProcessDefinition> archive(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(service.archive(id, user.getUsername()));
+    }
+
+    // Eliminar
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        policyService.delete(id);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> delete(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserDetails user) {
+        service.delete(id, user.getUsername());
         return ResponseEntity.noContent().build();
     }
-    
-    private String getCurrentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null ? auth.getName() : "system";
+
+    // Cualquier usuario autenticado puede listar políticas publicadas
+    @GetMapping
+    public ResponseEntity<List<ProcessDefinition>> listPublished() {
+        return ResponseEntity.ok(service.findPublished());
+    }
+
+    // Listar activas
+    @GetMapping("/active")
+    public ResponseEntity<List<ProcessDefinition>> listActive() {
+        return ResponseEntity.ok(service.findActive());
+    }
+
+    // Ver una política por ID
+    @GetMapping("/{id}")
+    public ResponseEntity<ProcessDefinition> getById(@PathVariable String id) {
+        return ResponseEntity.ok(service.findById(id));
+    }
+
+    // El admin ve sus borradores
+    @GetMapping("/my-drafts")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProcessDefinition>> myDrafts(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(service.findByCreator(user.getUsername()));
+    }
+
+    // El admin ve todas sus políticas
+    @GetMapping("/my-policies")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProcessDefinition>> myPolicies(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(service.findByCreator(user.getUsername()));
     }
 }

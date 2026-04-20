@@ -10,24 +10,32 @@ import java.util.Optional;
 @Repository
 public interface PolicyRepository extends MongoRepository<ProcessDefinition, String> {
 
-    Optional<ProcessDefinition> findByName(String name);
-
+    // Consultas básicas
     List<ProcessDefinition> findByStatus(String status);
-
-    List<ProcessDefinition> findByCreatedBy(String createdBy);
-
+    
+    List<ProcessDefinition> findByCreatedBy(String userId);
+    
+    Optional<ProcessDefinition> findByIdAndCreatedBy(String id, String userId);
+    
+    Optional<ProcessDefinition> findByName(String name);
+    
     boolean existsByName(String name);
 
-    List<ProcessDefinition> findByStatusAndNameContainingIgnoreCase(String status, String name);
+    // Consultas para el motor de workflow
+    List<ProcessDefinition> findByStatusOrderByCreatedAtDesc(String status);
+    
+    @Query("{ 'status': 'ACTIVE' }")
+    List<ProcessDefinition> findAllActive();
+    
+    @Query("{ 'status': 'PUBLISHED' }")
+    List<ProcessDefinition> findAllPublished();
 
-    // Consulta personalizada con @Query
-    @Query("{ 'status': ?0, 'createdAt': { $gte: ?1 } }")
-    List<ProcessDefinition> findActiveCreatedAfter(String status, java.time.Instant date);
-
-    // Contar procesos por estado
+    // Búsqueda por nombre (case insensitive)
+    List<ProcessDefinition> findByNameContainingIgnoreCase(String name);
+    
+    // Contar por estado
     long countByStatus(String status);
-
-    // Buscar procesos que contengan un texto en nombre o descripción
-    @Query("{ $or: [ { 'name': { $regex: ?0, $options: 'i' } }, { 'description': { $regex: ?0, $options: 'i' } } ] }")
-    List<ProcessDefinition> searchByNameOrDescription(String searchTerm);
+    
+    // Buscar por creador y estado
+    List<ProcessDefinition> findByCreatedByAndStatus(String userId, String status);
 }

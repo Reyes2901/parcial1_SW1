@@ -2,145 +2,158 @@ package com.workflow.bpm.policy;
 
 import com.workflow.bpm.shared.exception.ResourceNotFoundException;
 import com.workflow.bpm.shared.exception.ValidationException;
-import com.workflow.bpm.shared.model.Node;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PolicyService {
-    
-    private final PolicyRepository policyRepository;
-    
-    public ProcessDefinition create(ProcessDefinition policy, String username) {
+
+    private final PolicyRepository repo;
+    private final GraphValidator validator;
+
+    /**
+     * Crea una nueva política en estado DRAFT
+     */
+    public ProcessDefinition create(ProcessDefinition def, String userId) {
         // Validar nombre único
-        if (policyRepository.existsByName(policy.getName())) {
-            throw new ValidationException("Ya existe una política con el nombre: " + policy.getName());
+        if (repo.existsByName(def.getName())) {
+            throw new ValidationException("Ya existe una política con el nombre: " + def.getName());
         }
-        
-        // Validar estructura del grafo
-        validateGraph(policy);
-        
-        // Configurar metadata
-        policy.setStatus(ProcessDefinition.STATUS_DRAFT);
-        policy.setCreatedBy(username);
-        policy.setCreatedAt(Instant.now());
-        policy.setUpdatedAt(Instant.now());
-        policy.setVersion("1.0.0");
-        
-        ProcessDefinition saved = policyRepository.save(policy);
-        log.info("Política creada: {} por {}", saved.getName(), username);
+
+        def.setCreatedBy(userId);
+        def.setStatus(ProcessDefinition.STATUS_DRAFT);
+        def.setVersion("1.0");
+        def.setCreatedAt(Instant.now());
+        def.setUpdatedAt(Instant.now());
+
+        ProcessDefinition saved = repo.save(def);
+        log.info("Política creada: {} por {}", saved.getName(), userId);
         return saved;
     }
-    
-    public ProcessDefinition update(String id, ProcessDefinition updatedPolicy) {
-        ProcessDefinition existing = policyRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada: " + id));
-        
-        // Validar estructura
-        validateGraph(updatedPolicy);
-        
+
+    /**
+     * Actualiza una política existente (solo el creador puede hacerlo)
+     */
+    public ProcessDefinition update(String id, ProcessDefinition updated, String userId) {
+        ProcessDefinition existing = repo.findByIdAndCreatedBy(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada o no tienes permisos"));
+
         // Actualizar campos
-        existing.setName(updatedPolicy.getName());
-        existing.setDescription(updatedPolicy.getDescription());
-        existing.setLanes(updatedPolicy.getLanes());
-        existing.setNodes(updatedPolicy.getNodes());
-        existing.setTransitions(updatedPolicy.getTransitions());
-        existing.setMetadata(updatedPolicy.getMetadata());
+        existing.setName(updated.getName());
+        existing.setDescription(updated.getDescription());
+        existing.setLanes(updated.getLanes());
+        existing.setNodes(updated.getNodes());
+        existing.setTransitions(updated.getTransitions());
+        existing.setMetadata(updated.getMetadata());
         existing.setUpdatedAt(Instant.now());
-        
-        ProcessDefinition saved = policyRepository.save(existing);
+
+        ProcessDefinition saved = repo.save(existing);
         log.info("Política actualizada: {}", saved.getName());
         return saved;
     }
-    
-    public ProcessDefinition activate(String id) {
-        ProcessDefinition policy = policyRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada: " + id));
-        
-        validateGraph(policy);
-        policy.setStatus(ProcessDefinition.STATUS_ACTIVE);
-        policy.setUpdatedAt(Instant.now());
-        
-        ProcessDefinition saved = policyRepository.save(policy);
-        log.info("Política activada: {}", saved.getName());
+
+    /**
+     * Publica una política (cambia estado a PUBLISHED/ACTIVE)
+     */
+    public ProcessDefinition publish(String id, String userId) {
+        ProcessDefinition def = repo.findByIdAndCreatedBy(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada o no tienes permisos"));
+
+        // Validar estructura del grafo antes de publicar
+        validator.validate(def);
+
+        def.setStatus(ProcessDefinition.STATUS_ACTIVE);
+        def.setUpdatedAt(Instant.now());
+
+        ProcessDefinition saved = repo.save(def);
+        log.info("Política publicada: {}", saved.getName());
         return saved;
     }
-    
-    public List<ProcessDefinition> findAll() {
-        return policyRepository.findAll();
+
+    /**
+     * Activa una política (alias de publish)
+     */
+    public ProcessDefinition activate(String id, String userId) {
+        return publish(id, userId);
     }
-    
+
+    /**
+     * Archiva una política
+     */
+    public ProcessDefinition archive(String id, String userId) {
+        ProcessDefinition def = repo.findByIdAndCreatedBy(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada o no tienes permisos"));
+
+        def.setStatus(ProcessDefinition.STATUS_ARCHIVED);
+        def.setUpdatedAt(Instant.now());
+
+        ProcessDefinition saved = repo.save(def);
+        log.info("Política archivada: {}", saved.getName());
+        return saved;
+    }
+
+    /**
+     * Obtiene todas las políticas publicadas/activas
+     */
+    public List<ProcessDefinition> findPublished() {
+        return repo.findByStatus(ProcessDefinition.STATUS_ACTIVE);
+    }
+
+    /**
+     * Obtiene todas las políticas activas (alias)
+     */
     public List<ProcessDefinition> findActive() {
-        return policyRepository.findByStatus(ProcessDefinition.STATUS_ACTIVE);
+        return repo.findByStatus(ProcessDefinition.STATUS_ACTIVE);
     }
-    
+
+    /**
+     * Obtiene todas las políticas
+     */
+    public List<ProcessDefinition> findAll() {
+        return repo.findAll();
+    }
+
+    /**
+     * Obtiene políticas por creador
+     */
+    public List<ProcessDefinition> findByCreator(String userId) {
+        return repo.findByCreatedBy(userId);
+    }
+
+    /**
+     * Busca una política por ID
+     */
     public ProcessDefinition findById(String id) {
-        return policyRepository.findById(id)
+        return repo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada: " + id));
     }
-    
-    public void delete(String id) {
-        ProcessDefinition policy = findById(id);
-        if (ProcessDefinition.STATUS_ACTIVE.equals(policy.getStatus())) {
+
+    /**
+     * Elimina una política (solo el creador, y solo si no está activa)
+     */
+    public void delete(String id, String userId) {
+        ProcessDefinition def = repo.findByIdAndCreatedBy(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada o no tienes permisos"));
+
+        if (ProcessDefinition.STATUS_ACTIVE.equals(def.getStatus())) {
             throw new ValidationException("No se puede eliminar una política activa. Archívela primero.");
         }
-        policyRepository.deleteById(id);
-        log.info("Política eliminada: {}", policy.getName());
+
+        repo.deleteById(id);
+        log.info("Política eliminada: {}", def.getName());
     }
-    
-    // Validación del grafo
-    private void validateGraph(ProcessDefinition policy) {
-        if (policy.getNodes() == null || policy.getNodes().isEmpty()) {
-            throw new ValidationException("El proceso debe tener al menos un nodo");
-        }
-        
-        // Validar que exista un nodo START
-        boolean hasStart = policy.getNodes().stream()
-                .anyMatch(node -> Node.TYPE_START.equals(node.getType()));
-        if (!hasStart) {
-            throw new ValidationException("El proceso debe tener un nodo START");
-        }
-        
-        // Validar que exista al menos un nodo END
-        boolean hasEnd = policy.getNodes().stream()
-                .anyMatch(node -> Node.TYPE_END.equals(node.getType()));
-        if (!hasEnd) {
-            throw new ValidationException("El proceso debe tener al menos un nodo END");
-        }
-        
-        // Validar que todos los sourceId y targetId de transiciones existan
-        if (policy.getTransitions() != null && !policy.getTransitions().isEmpty()) {
-            Set<String> nodeIds = policy.getNodes().stream()
-                    .map(Node::getId)
-                    .collect(Collectors.toSet());
-            
-            for (var transition : policy.getTransitions()) {
-                if (transition.getSourceId() != null && !nodeIds.contains(transition.getSourceId())) {
-                    throw new ValidationException("Transición con sourceId inválido: " + transition.getSourceId());
-                }
-                if (transition.getTargetId() != null && !nodeIds.contains(transition.getTargetId())) {
-                    throw new ValidationException("Transición con targetId inválido: " + transition.getTargetId());
-                }
-            }
-            
-            // Validar que no haya nodos huérfanos (excepto START)
-            Set<String> nodesWithIncoming = policy.getTransitions().stream()
-                    .map(t -> t.getTargetId())
-                    .collect(Collectors.toSet());
-            
-            for (var node : policy.getNodes()) {
-                if (!Node.TYPE_START.equals(node.getType()) && !nodesWithIncoming.contains(node.getId())) {
-                    log.warn("Nodo huérfano detectado (sin transiciones entrantes): {}", node.getId());
-                }
-            }
-        }
+
+    /**
+     * Valida una política sin guardarla
+     */
+    public void validate(String id) {
+        ProcessDefinition def = findById(id);
+        validator.validate(def);
     }
 }
