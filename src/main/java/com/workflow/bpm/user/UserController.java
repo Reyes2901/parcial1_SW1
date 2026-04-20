@@ -44,7 +44,7 @@ public class UserController {
         return ResponseEntity.ok(savedUser);
     }
 
-    @GetMapping  // ✅ Corregido: solo /users
+    @GetMapping  
     public List<User> getAll() {
         List<User> users = repo.findAll();
         //users.forEach(user -> user.setPassword(null)); // Ocultar passwords

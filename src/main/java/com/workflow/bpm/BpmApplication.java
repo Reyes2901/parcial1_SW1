@@ -8,9 +8,10 @@ import org.springframework.context.annotation.Bean;
 import com.workflow.bpm.user.TestConnection;
 import com.workflow.bpm.user.TestRepository;
 
-@SpringBootApplication(scanBasePackages = "com.workflow.bpm")
+//@SpringBootApplication(scanBasePackages = "com.workflow.bpm")
 
-//@SpringBootApplication
+//@EnableMongoAuditing
+@SpringBootApplication
 public class BpmApplication {
 
 	public static void main(String[] args) {
@@ -19,8 +20,8 @@ public class BpmApplication {
 	@Bean
 	CommandLineRunner init(TestRepository repo) {
 		return args -> {
-			repo.save(new TestConnection("Mongo Atlas conectado OK"));
-			System.out.println("✔ Mongo conectado y escritura OK");
+			repo.save(new TestConnection("Mongo Atlas conectado OK prueba 714"));
+			//System.out.println("Mongo conectado y escritura OK");
 		};
 	}
 }
