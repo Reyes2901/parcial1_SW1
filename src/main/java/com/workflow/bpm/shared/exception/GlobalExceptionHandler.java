@@ -1,5 +1,6 @@
 package com.workflow.bpm.shared.exception;
 
+import com.workflow.bpm.workflow.engine.WorkflowException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -42,6 +43,13 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
         return ResponseEntity.status(400)
                 .body(new ErrorResponse("VALIDATION_ERROR", msg));
+    }
+
+    //Nuevo manejador para WorkflowException
+    @ExceptionHandler(WorkflowException.class)
+    public ResponseEntity<ErrorResponse> handleWorkflow(WorkflowException ex) {
+        return ResponseEntity.status(422)
+                .body(new ErrorResponse("WORKFLOW_ERROR", ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
