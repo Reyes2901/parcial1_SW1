@@ -13,10 +13,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FormSchema {
+    private String title;        // título del formulario en la UI
+    private String description;  // instrucciones opcionales
+    
     @Builder.Default
     private List<FormField> fields = new ArrayList<>();
     
-    // Métodos helper
     public void addField(FormField field) {
         if (fields == null) {
             fields = new ArrayList<>();

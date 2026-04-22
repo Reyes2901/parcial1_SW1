@@ -6,7 +6,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -57,4 +59,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(500)
                 .body(new ErrorResponse("INTERNAL_ERROR", "Error interno del servidor"));
     }
+    
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxSize(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(400)
+                .body(new ErrorResponse("FILE_TOO_LARGE", "El archivo excede el tamaño máximo permitido"));
+    }
+    @ExceptionHandler(FormValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleFormValidation(FormValidationException ex) {
+        return ResponseEntity.status(400).body(Map.of(
+                "code", "FORM_VALIDATION_ERROR",
+                "errors", ex.getErrors()
+        ));
+    }
+
+  
 }

@@ -5,6 +5,7 @@ import com.workflow.bpm.notification.dto.BottleneckAlert;
 import com.workflow.bpm.task.TaskService;
 import com.workflow.bpm.task.document.TaskInstance;
 import com.workflow.bpm.workflow.document.ProcessInstance;
+import com.workflow.bpm.workflow.dto.ProcessHistoryResponse;
 import com.workflow.bpm.workflow.dto.StartProcessRequest;
 import com.workflow.bpm.workflow.engine.WorkflowEngine;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+
 
 @RestController
 @RequestMapping("/api/workflow")
@@ -120,4 +122,9 @@ public class WorkflowController {
     public ResponseEntity<WorkflowService.WorkflowStats> getStats() {
         return ResponseEntity.ok(workflowService.getStats());
     }
+    @GetMapping("/instances/{id}/history")
+    public ResponseEntity<ProcessHistoryResponse> getHistory(@PathVariable String id) {
+        return ResponseEntity.ok(workflowService.getHistory(id));
+    }
+
 }

@@ -43,6 +43,7 @@ public class TaskInstance {
     // Formulario — copia inmutable del formSchema del nodo
     private FormSchema formSchema;
     private Map<String, Object> formSubmission;  // lo que llenó el funcionario
+    private String formSubmissionId;  // para enlazar con el FormSubmission
 
     // Snapshot del cliente para mostrar en bandeja sin joins
     private String clientName;
@@ -94,4 +95,5 @@ public class TaskInstance {
         this.status = STATUS_REJECTED;
         this.completedAt = Instant.now();
     }
+
 }
