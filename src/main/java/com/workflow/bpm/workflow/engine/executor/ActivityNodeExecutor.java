@@ -1,5 +1,6 @@
 package com.workflow.bpm.workflow.engine.executor;
 
+import com.workflow.bpm.notification.NotificationService;
 import com.workflow.bpm.policy.ProcessDefinition;
 import com.workflow.bpm.shared.model.Lane;
 import com.workflow.bpm.shared.model.Node;
@@ -17,6 +18,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 
+import javax.management.Notification;
+
 @Component("ACTIVITY")
 @RequiredArgsConstructor
 @Slf4j
@@ -24,7 +27,7 @@ public class ActivityNodeExecutor implements NodeExecutor {
 
     private final TaskInstanceRepository taskRepo;
     private final UserRepository userRepo;
-
+    private final NotificationService notificationService;
     @Override
     public List<String> execute(ProcessInstance instance,
                                 ProcessDefinition definition, 
@@ -33,7 +36,7 @@ public class ActivityNodeExecutor implements NodeExecutor {
         instance.setCurrentNodeId(node.getId());
         instance.setCurrentNodeLabel(node.getLabel());
         
-        // ❌ ELIMINADO: instance.addAuditEntry(...)
+        // ELIMINADO: instance.addAuditEntry(...)
 
         String assigneeId = resolveAssignee(node, definition);
 
@@ -55,8 +58,9 @@ public class ActivityNodeExecutor implements NodeExecutor {
                 .createdAt(Instant.now())
                 .dueAt(Instant.now().plus(estimatedHours, ChronoUnit.HOURS))
                 .build();
-
-        taskRepo.save(task);
+        
+        TaskInstance savedTask = taskRepo.save(task);
+        notificationService.notifyNewTask(assigneeId, savedTask);
         log.info("[ACTIVITY] Tarea '{}' creada para '{}' (due: {})", 
                  node.getLabel(), assigneeId, task.getDueAt());
 
@@ -69,11 +73,16 @@ public class ActivityNodeExecutor implements NodeExecutor {
                 .findFirst()
                 .orElse(null);
 
-        if (node.getAssigneeRole() != null) {
-            return userRepo.findByRole(node.getAssigneeRole()).stream()
-                    .findFirst()
-                    .map(User::getUsername)
-                    .orElse(node.getAssigneeRole());
+        if (lane != null && node.getAssigneeRole() != null) {
+        // 👇 Usar el nuevo método con departmentId
+        return userRepo.findFirstByRoleAndDepartmentId(
+                        node.getAssigneeRole(), 
+                        lane.getDepartmentId())
+                .map(User::getUsername)
+                .orElseGet(() -> userRepo.findByRole(node.getAssigneeRole()).stream()
+                        .findFirst()
+                        .map(User::getUsername)
+                        .orElse(node.getAssigneeRole()));
         }
         
         return node.getAssigneeRole() != null ? node.getAssigneeRole() : "unassigned";

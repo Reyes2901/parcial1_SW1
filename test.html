@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>STOMP Test</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+
+<body>
+  <h2>STOMP WebSocket Test</h2>
+
+  <button onclick="connect()">🔌 Conectar</button>
+  <button onclick="disconnect()">❌ Desconectar</button>
+  <button onclick="sendMessage()">📤 Enviar mensaje</button>
+
+  <pre id="log"></pre>
+
+  <script>
+    let client = null;
+
+    function log(msg) {
+      console.log(msg);
+      document.getElementById("log").innerText += msg + "\n";
+    }
+
+    function connect() {
+      log("🔄 Conectando...");
+
+      const socket = new SockJS("http://localhost:8080/ws");
+      client = Stomp.over(socket);
+
+      // opcional: desactivar logs internos
+      client.debug = null;
+
+      client.connect(
+        {
+            Authorization: "Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJmdW5jaW9uYXJpbyIsInJvbGUiOiJGVU5DSU9OQVJJTyIsImlhdCI6MTc3NjczNDUwOSwiZXhwIjoxNzc2ODIwOTA5fQ.SNkbxMoAKMZTl_r9vDrSCVpnunSwe6QXjuoAp4ckbzU64OzJwSftqrqN2pVCGtCO"
+
+        },
+        function (frame) {
+          log("✅ CONNECTED: " + frame);
+
+          // SUSCRIPCIONES
+          client.subscribe("/topic/test", function (msg) {
+            log("📩 TOPIC: " + msg.body);
+          });
+
+          client.subscribe("/user/queue/tasks", function (msg) {
+            log("📩 TASK: " + msg.body);
+          });
+
+          client.subscribe("/user/queue/instance-status", function (msg) {
+            log("📊 STATUS: " + msg.body);
+          });
+        },
+        function (error) {
+          log("❌ ERROR: " + error);
+        }
+      );
+    }
+
+    function sendMessage() {
+      if (!client) {
+        log("⚠️ No conectado");
+        return;
+      }
+
+      client.send("/app/test", {}, JSON.stringify({
+        msg: "hola desde frontend"
+      }));
+
+      log("📤 Mensaje enviado");
+    }
+
+    function disconnect() {
+      if (client) {
+        client.disconnect();
+        log("🔌 Desconectado");
+      }
+    }
+  </script>
+</body>
+</html>

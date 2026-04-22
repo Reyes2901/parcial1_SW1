@@ -19,7 +19,11 @@ public interface TaskInstanceRepository extends MongoRepository<TaskInstance, St
     
     List<TaskInstance> findByStatusAndDueAtBefore(String status, Instant now);
     
+    List<TaskInstance> findByStatusInAndDueAtBefore(List<String> statuses, Instant now);
+
     long countByInstanceIdAndStatus(String instanceId, String status);
     
     List<TaskInstance> findByStatus(String status);
+
+    long countByStatus(String statusPending);
 }

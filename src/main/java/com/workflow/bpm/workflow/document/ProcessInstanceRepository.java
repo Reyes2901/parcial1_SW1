@@ -14,4 +14,5 @@ public interface ProcessInstanceRepository extends MongoRepository<ProcessInstan
     List<ProcessInstance> findByStatus(String status);
     // List<ProcessInstance> findByCurrentNodeId(String nodeId);
     Optional<ProcessInstance> findByClientIdAndDefinitionId(String clientId, String definitionId);
+    long countByStatus(String statusInProgress);
 }

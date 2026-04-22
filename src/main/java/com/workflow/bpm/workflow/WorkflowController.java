@@ -1,5 +1,7 @@
 package com.workflow.bpm.workflow;
 
+import com.workflow.bpm.analytics.BottleneckDetector;
+import com.workflow.bpm.notification.dto.BottleneckAlert;
 import com.workflow.bpm.task.TaskService;
 import com.workflow.bpm.task.document.TaskInstance;
 import com.workflow.bpm.workflow.document.ProcessInstance;
@@ -8,6 +10,9 @@ import com.workflow.bpm.workflow.engine.WorkflowEngine;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.core.AbstractMessageSendingTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +28,7 @@ public class WorkflowController {
     private final WorkflowEngine engine;
     private final WorkflowService workflowService;
     private final TaskService taskService;
+    private final BottleneckDetector bottleneckDetector;
 
     // --- Iniciar trámite ---
     @PostMapping("/start")
@@ -95,5 +101,23 @@ public class WorkflowController {
             @PathVariable String id,
             @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(engine.cancelInstance(id, body.get("reason")));
+    }
+    private final SimpMessagingTemplate template;
+
+    @GetMapping("/test/ws")
+    public String test() {
+        template.convertAndSend("/topic/test", "🔥 hola desde backend");
+        return "ok";
+    }
+    @PostMapping("/admin/trigger-bottleneck-check")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> triggerBottleneck() {
+        bottleneckDetector.detectarCuellos();
+        return ResponseEntity.ok("Bottleneck check ejecutado manualmente");
+    }    
+        @GetMapping("/admin/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<WorkflowService.WorkflowStats> getStats() {
+        return ResponseEntity.ok(workflowService.getStats());
     }
 }

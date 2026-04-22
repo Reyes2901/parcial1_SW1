@@ -1,5 +1,6 @@
 package com.workflow.bpm.workflow.engine;
 
+import com.workflow.bpm.notification.NotificationService;
 import com.workflow.bpm.policy.PolicyRepository;
 import com.workflow.bpm.policy.ProcessDefinition;
 import com.workflow.bpm.shared.exception.ResourceNotFoundException;
@@ -19,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.management.Notification;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,16 +30,14 @@ public class WorkflowEngine {
     // Repositorios
     private final PolicyRepository policyRepo;
     private final ProcessInstanceRepository instanceRepo;
-
+    private final NotificationService notificationService;
     // Evaluador de condiciones
     private final TransitionEvaluator transitionEvaluator;
 
     // Strategy map: Spring inyecta todos los NodeExecutor por su @Component("TIPO")
     private final Map<String, NodeExecutor> executors;
 
-    // ----------------------------------------------------------------
     // PUNTO DE ENTRADA — el cliente inicia un trámite
-    // ----------------------------------------------------------------
     public ProcessInstance startProcess(String definitionId,
                                         String clientId,
                                         String clientName,
@@ -64,7 +65,7 @@ public class WorkflowEngine {
                 .build();
 
         instance = instanceRepo.save(instance);
-        log.info("🚀 Proceso iniciado: {} | Política: '{}' | Cliente: {}", 
+        log.info(" Proceso iniciado: {} | Política: '{}' | Cliente: {}", 
                  instance.getId(), def.getName(), clientName);
 
         // Ejecutar desde el nodo START
@@ -115,7 +116,6 @@ public class WorkflowEngine {
         // Actualizar estado de la instancia
         instance.setCurrentNodeId(node.getId());
         instance.setCurrentNodeLabel(node.getLabel());
-
         // Registrar inicio en el auditLog
         appendAudit(instance, node.getId(), node.getLabel(), 
                     AuditEntry.ACTION_NODE_STARTED, "system", null, null);
@@ -127,7 +127,9 @@ public class WorkflowEngine {
         }
 
         List<String> nextNodeIds = executor.execute(instance, def, node);
-
+        if(!"START".equals(nextNodeIds) && !"END".equals(node.getType())) {
+            notificationService.notifyInstanceAdvanced(instance);
+        }
         // Si el executor devuelve nodos siguientes, continuar el recorrido
         // Si devuelve lista vacía = el motor se detiene (ACTIVITY esperando o END)
         if (!nextNodeIds.isEmpty()) {
@@ -242,11 +244,12 @@ public class WorkflowEngine {
         
         instance.setStatus(ProcessInstance.STATUS_CANCELLED);
         instance.setCompletedAt(Instant.now());
-        
+        notificationService.notifyInstanceRejected(instance,reason);
         appendAudit(instance, instance.getCurrentNodeId(), instance.getCurrentNodeLabel(),
                     AuditEntry.ACTION_CANCELLED, "system", null, Map.of("reason", reason));
         
-        log.info("❌ Instancia cancelada: {} - Razón: {}", instanceId, reason);
-        return instanceRepo.save(instance);
+        log.info("Instancia cancelada: {} - Razón: {}", instanceId, reason);
+        instanceRepo.save(instance);
+        return instance;
     }
 }

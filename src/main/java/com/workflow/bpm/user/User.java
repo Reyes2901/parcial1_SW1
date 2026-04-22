@@ -25,4 +25,7 @@ public class User {
 
     @JsonProperty("role")
     private String role;
+
+    private String departmentId; // Para asignaciones basadas en departamento   
+    
 }

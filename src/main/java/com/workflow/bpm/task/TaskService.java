@@ -1,5 +1,6 @@
 package com.workflow.bpm.task;
 
+import com.workflow.bpm.notification.NotificationService;
 import com.workflow.bpm.shared.exception.ResourceNotFoundException;
 import com.workflow.bpm.task.document.TaskInstance;
 import com.workflow.bpm.task.document.TaskInstanceRepository;
@@ -12,6 +13,8 @@ import com.workflow.bpm.workflow.engine.WorkflowEngine;
 import com.workflow.bpm.workflow.engine.WorkflowException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.scheduling.config.Task;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +22,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+
+import javax.management.Notification;
 
 @Service
 @RequiredArgsConstructor
@@ -29,10 +34,10 @@ public class TaskService {
     private final ProcessInstanceRepository instanceRepo;
     private final UserRepository userRepo;
     private final WorkflowEngine engine;
-
+    private final NotificationService notificationService;
     /**
      * Verifica si el usuario tiene permiso para trabajar la tarea
-     */
+     */ 
     private void checkAccess(TaskInstance task, String username) {
         // 1. Verificar por assigneeId directo
         if (username.equals(task.getAssigneeId())) {
@@ -96,7 +101,7 @@ public class TaskService {
         instanceRepo.save(instance);
 
         engine.resumeAfterTask(instance.getId(), task.getNodeId(), formData);
-
+        notificationService.notifyBottleneck(task);
         log.info("✅ Tarea '{}' completada por {}. Motor reanudado.", task.getNodeLabel(), userId);
         return task;
     }
@@ -114,9 +119,10 @@ public class TaskService {
 
         task.setStatus(TaskInstance.STATUS_IN_PROGRESS);
         task.setStartedAt(Instant.now());
-        
-        log.info("▶ Tarea '{}' iniciada por {}", task.getNodeLabel(), userId);
-        return taskRepo.save(task);
+        TaskInstance startedTask = taskRepo.save(task);
+        //log.info("▶ Tarea '{}' iniciada por {}", task.getNodeLabel(), userId);
+        notificationService.notifyBottleneck(startedTask); // Verificar si es un posible cuello de botella al iniciar
+        return startedTask;
     }
 
     public TaskInstance rejectTask(String taskId, String userId, String motivo) {
@@ -148,8 +154,8 @@ public class TaskService {
                 .build());
         
         instanceRepo.save(inst);
-
-        log.info("❌ Tarea '{}' rechazada por {}. Motivo: {}", task.getNodeLabel(), userId, motivo);
+        notificationService.notifyInstanceRejected(inst, motivo);
+        log.info(" Tarea '{}' rechazada por {}. Motivo: {}", task.getNodeLabel(), userId, motivo);
         return task;
     }
 

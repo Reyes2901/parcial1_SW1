@@ -4,6 +4,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.workflow.bpm.user.TestConnection;
 import com.workflow.bpm.user.TestRepository;
@@ -11,6 +12,7 @@ import com.workflow.bpm.user.TestRepository;
 //@SpringBootApplication(scanBasePackages = "com.workflow.bpm")
 
 //@EnableMongoAuditing
+@EnableScheduling
 @SpringBootApplication
 public class BpmApplication {
 

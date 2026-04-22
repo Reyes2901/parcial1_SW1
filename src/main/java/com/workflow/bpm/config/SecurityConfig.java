@@ -3,7 +3,6 @@ package com.workflow.bpm.config;
 import com.workflow.bpm.auth.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.boot.autoconfigure.graphql.GraphQlProperties.Http;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -39,7 +38,10 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/ws/**",
+                                "/test/**",
+                                "topics/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/users").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/policies").permitAll()

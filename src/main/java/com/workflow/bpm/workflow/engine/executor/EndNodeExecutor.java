@@ -1,5 +1,6 @@
 package com.workflow.bpm.workflow.engine.executor;
 
+import com.workflow.bpm.notification.NotificationService;
 import com.workflow.bpm.policy.ProcessDefinition;
 import com.workflow.bpm.shared.model.Node;
 import com.workflow.bpm.workflow.document.ProcessInstance;
@@ -18,7 +19,7 @@ import java.util.List;
 public class EndNodeExecutor implements NodeExecutor {
 
     private final ProcessInstanceRepository instanceRepo;
-
+    private final NotificationService notificationService;
     @Override
     public List<String> execute(ProcessInstance instance,
                                 ProcessDefinition definition, 
@@ -31,7 +32,7 @@ public class EndNodeExecutor implements NodeExecutor {
         
         
         instanceRepo.save(instance);
-        
+        notificationService.notifyInstanceAdvanced(instance);
         log.info("[END] Proceso '{}' completado en {}", 
                  instance.getId(), instance.getCompletedAt());
         
