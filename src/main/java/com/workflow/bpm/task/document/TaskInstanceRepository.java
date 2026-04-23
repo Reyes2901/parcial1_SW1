@@ -4,6 +4,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 
 @Repository
@@ -11,7 +12,7 @@ public interface TaskInstanceRepository extends MongoRepository<TaskInstance, St
     
     List<TaskInstance> findByAssigneeIdAndStatusIn(String assigneeId, List<String> statuses);
     
-    List<TaskInstance> findByAssigneeRoleAndStatusIn(String assigneeRole, List<String> statuses);  // 👈 Nuevo
+    List<TaskInstance> findByAssigneeRoleAndStatusIn(String assigneeRole, List<String> statuses);
     
     List<TaskInstance> findByAssigneeId(String assigneeId);
     
@@ -20,10 +21,15 @@ public interface TaskInstanceRepository extends MongoRepository<TaskInstance, St
     List<TaskInstance> findByStatusAndDueAtBefore(String status, Instant now);
     
     List<TaskInstance> findByStatusInAndDueAtBefore(List<String> statuses, Instant now);
-
+    
     long countByInstanceIdAndStatus(String instanceId, String status);
     
     List<TaskInstance> findByStatus(String status);
-
-    long countByStatus(String statusPending);
+    
+    long countByStatus(String status);
+    
+    // Métodos adicionales para Analytics
+    long countByStatusInAndDueAtBefore(List<String> statuses, Date now);
+    long countByAssigneeIdAndStatus(String assigneeId, String status);
+    List<TaskInstance> findByLaneIdAndStatusIn(String laneId, List<String> statuses);
 }
