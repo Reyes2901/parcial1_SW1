@@ -1,10 +1,11 @@
 package com.workflow.bpm.user;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Document(collection = "users")
 @Data
@@ -15,17 +16,16 @@ public class User {
 
     @Id
     private String id;
-    
+
     @Indexed(unique = true)
     @JsonProperty("username")
     private String username;
 
-    @JsonProperty("password")
+    @JsonIgnore
     private String password;
 
     @JsonProperty("role")
     private String role;
 
-    private String departmentId; // Para asignaciones basadas en departamento   
-    
-}
+    private String departmentId;
+}

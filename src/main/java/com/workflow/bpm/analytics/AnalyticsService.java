@@ -1,6 +1,8 @@
 package com.workflow.bpm.analytics;
 
 import com.workflow.bpm.analytics.dto.*;
+import com.workflow.bpm.department.Department;
+import com.workflow.bpm.department.DepartmentRepository;
 import com.workflow.bpm.policy.PolicyRepository;
 import com.workflow.bpm.policy.ProcessDefinition;
 import com.workflow.bpm.shared.exception.ResourceNotFoundException;
@@ -31,6 +33,7 @@ public class AnalyticsService {
     private final PolicyRepository policyRepo;
     private final TaskInstanceRepository taskRepo;
     private final ProcessInstanceRepository instanceRepo;
+    private final DepartmentRepository departmentRepo;
 
     // -------------------------------------------------------
     // Métricas completas de una política — para el admin
@@ -47,7 +50,7 @@ public class AnalyticsService {
                     NodeStats stats = NodeStats.builder()
                             .nodeId(doc.getString("_id"))
                             .nodeLabel(doc.getString("nodeLabel"))
-                            .laneId(doc.getString("laneId"))
+                            .laneId(doc.get("_id").toString())
                             .totalTasks(getLong(doc, "totalTasks"))
                             .avgDurationMinutes(getDouble(doc, "avgDurationMinutes"))
                             .minDurationMinutes(getDouble(doc, "minDurationMinutes"))
@@ -123,7 +126,7 @@ public class AnalyticsService {
                 .stream()
                 .limit(10)
                 .map(doc -> BottleneckReport.builder()
-                        .taskId(doc.getString("_id"))
+                        .taskId(doc.get("_id").toString())
                         .instanceId(doc.getString("instanceId"))
                         .nodeLabel(doc.getString("nodeLabel"))
                         .laneName(doc.getString("laneId"))
@@ -139,23 +142,32 @@ public class AnalyticsService {
         List<PolicyUsage> topPolicies = analyticsRepo.getTopPoliciesByUsage(3)
                 .stream()
                 .map(doc -> PolicyUsage.builder()
-                        .definitionId(doc.getString("_id"))
+                        .definitionId(doc.get("_id").toString())
                         .definitionName(doc.getString("definitionName"))
                         .totalInstances(getLong(doc, "totalInstances"))
                         .activeInstances(getLong(doc, "activeInstances"))
                         .build())
                 .collect(Collectors.toList());
 
-        // Carga por departamento
+        // Carga por departamento (agrupado por departmentId real)
+        Map<String, String> deptNameCache = departmentRepo.findAll().stream()
+                .collect(Collectors.toMap(Department::getId, Department::getName, (a, b) -> a));
+
         List<DepartmentLoad> deptLoad = analyticsRepo.getDepartmentLoad()
                 .stream()
-                .map(doc -> DepartmentLoad.builder()
-                        .laneId(doc.getString("_id"))
-                        .laneName(doc.getString("_id"))
-                        .pendingTasks(getLong(doc, "pendingTasks"))
-                        .inProgressTasks(getLong(doc, "inProgressTasks"))
-                        .completedToday(getLong(doc, "completedToday"))
-                        .build())
+                .map(doc -> {
+                    String deptId = doc.get("_id") != null ? doc.get("_id").toString() : null;
+                    String deptName = deptId != null ? deptNameCache.getOrDefault(deptId, deptId) : "Unknown";
+                    return DepartmentLoad.builder()
+                            .departmentId(deptId)
+                            .departmentName(deptName)
+                            .laneId(deptId)          // backward compat
+                            .laneName(deptName)      // backward compat
+                            .pendingTasks(getLong(doc, "pendingTasks"))
+                            .inProgressTasks(getLong(doc, "inProgressTasks"))
+                            .completedToday(getLong(doc, "completedToday"))
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return DashboardSummary.builder()

@@ -33,6 +33,7 @@ public class ProcessInstance {
     private String definitionId;
     private String definitionVersion;
     private String definitionName;     // snapshot — no cambia si el admin edita la política
+    private String processTypeId;      // snapshot del tipo de trámite de la política
 
     // Estado del motor
     private String status;             // IN_PROGRESS | COMPLETED | REJECTED | CANCELLED

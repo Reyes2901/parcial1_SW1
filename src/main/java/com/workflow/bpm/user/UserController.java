@@ -1,63 +1,80 @@
 package com.workflow.bpm.user;
 
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
-
+import com.workflow.bpm.user.dto.UserResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Tag(name = "Users", description = "User management endpoints")
 public class UserController {
 
     private final UserRepository repo;
     private final PasswordEncoder passwordEncoder;
 
     @PostMapping
+    @Operation(summary = "Register a new user")
     public ResponseEntity<?> create(@RequestBody @NonNull User user) {
-        System.out.println("USER RECIBIDO: " + user);
-
-        // Validar si el usuario ya existe
         if (repo.existsByUsername(user.getUsername())) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Username already exists");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
 
-        // Encriptar password
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        
-        // Asignar rol por defecto si no viene
+
         if (user.getRole() == null || user.getRole().isEmpty()) {
             user.setRole("USER");
         }
 
         User savedUser = repo.save(user);
-        savedUser.setPassword(null); // No devolver el password en la respuesta
-        
-        return ResponseEntity.ok(savedUser);
+        return ResponseEntity.ok(UserResponse.from(savedUser));
     }
 
-    @GetMapping  
-    public List<User> getAll() {
-        List<User> users = repo.findAll();
-        //users.forEach(user -> user.setPassword(null)); // Ocultar passwords
-        return users;
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "List users with optional role/departmentId filter")
+    public ResponseEntity<List<UserResponse>> getAll(
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String departmentId) {
+
+        List<User> users;
+
+        if (role != null && departmentId != null) {
+            users = repo.findByRoleAndDepartmentId(role, departmentId);
+        } else if (role != null) {
+            users = repo.findByRole(role);
+        } else if (departmentId != null) {
+            users = repo.findByDepartmentId(departmentId);
+        } else {
+            users = repo.findAll();
+        }
+
+        List<UserResponse> response = users.stream()
+                .map(UserResponse::from)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
     }
-    
+
     @GetMapping("/{id}")
-    public ResponseEntity<User> getById(@PathVariable String id) {
+    @Operation(summary = "Get user by ID")
+    public ResponseEntity<UserResponse> getById(@PathVariable String id) {
         return repo.findById(id)
-                .map(user -> {
-                    user.setPassword(null);
-                    return ResponseEntity.ok(user);
-                })
+                .map(user -> ResponseEntity.ok(UserResponse.from(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 }

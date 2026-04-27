@@ -91,7 +91,7 @@ public class AnalyticsRepository {
                 Criteria.where("status").in("PENDING", "IN_PROGRESS"),
                 Criteria.where("status").is("COMPLETED").and("completedAt").gte(Date.from(startOfDay))
             )),
-            Aggregation.group("laneId")
+            Aggregation.group("departmentId")
                 .sum(ConditionalOperators.when(Criteria.where("status").is("PENDING")).then(1).otherwise(0)).as("pendingTasks")
                 .sum(ConditionalOperators.when(Criteria.where("status").is("IN_PROGRESS")).then(1).otherwise(0)).as("inProgressTasks")
                 .sum(ConditionalOperators.when(Criteria.where("status").is("COMPLETED")).then(1).otherwise(0)).as("completedToday"),

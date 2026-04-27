@@ -7,16 +7,23 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import com.workflow.bpm.policy.dto.AiGenerateRequest;
+import com.workflow.bpm.shared.model.FormSchema;
+import com.workflow.bpm.shared.model.Node;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/policies")
 @RequiredArgsConstructor
+@Tag(name = "Policies", description = "Policy/process definition management")
 public class PolicyController {
 
     private final PolicyService service;
-
+    private final AiService aiService;
+     // Generar diagrama con IA
     // Solo ADMIN puede crear políticas
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -105,5 +112,49 @@ public class PolicyController {
     public ResponseEntity<List<ProcessDefinition>> myPolicies(
             @AuthenticationPrincipal UserDetails user) {
         return ResponseEntity.ok(service.findByCreator(user.getUsername()));
+    }
+
+    @PostMapping("/ai/generate")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Generate a process definition diagram using AI")
+    public ResponseEntity<ProcessDefinition> generateWithAI(
+            @Valid @RequestBody AiGenerateRequest req,
+            @AuthenticationPrincipal UserDetails user) {
+
+        ProcessDefinition def = aiService.generateDiagram(
+                req.getPrompt(), req.getLanguage(), req.getExistingLanes());
+
+        // Guardar como borrador — el admin puede editarlo antes de publicar
+        def.setCreatedBy(user.getUsername());
+        def.setStatus(ProcessDefinition.STATUS_DRAFT);
+        def.setVersion("1.0");
+
+        ProcessDefinition saved = service.save(def);
+        return ResponseEntity.status(201).body(saved);
+    }
+
+    /**
+     * Returns the form schema the client must fill to start a process.
+     * Looks for the START node's formSchema; falls back to the first ACTIVITY node.
+     */
+    @GetMapping("/{policyId}/start-form")
+    @Operation(summary = "Get the initial form schema required to start a process")
+    public ResponseEntity<FormSchema> getStartForm(@PathVariable String policyId) {
+        ProcessDefinition def = service.findById(policyId);
+
+        FormSchema schema = def.getNodes().stream()
+                .filter(Node::isStart)
+                .findFirst()
+                .map(Node::getFormSchema)
+                .orElseGet(() -> def.getNodes().stream()
+                        .filter(Node::isActivity)
+                        .findFirst()
+                        .map(Node::getFormSchema)
+                        .orElse(null));
+
+        if (schema == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(schema);
     }
 }

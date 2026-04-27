@@ -42,6 +42,10 @@ public class ProcessDefinition {
     private String status;       // DRAFT, ACTIVE, ARCHIVED
     private String createdBy;    // userId
     private String description;
+    private String processTypeId; // Referencia a ProcessType
+
+    @Builder.Default
+    private List<String> departmentIds = new ArrayList<>(); // Departamentos asociados
 
     @Builder.Default
     private List<Lane> lanes = new ArrayList<>();

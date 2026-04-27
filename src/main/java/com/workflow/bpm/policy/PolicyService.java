@@ -51,6 +51,12 @@ public class PolicyService {
         existing.setNodes(updated.getNodes());
         existing.setTransitions(updated.getTransitions());
         existing.setMetadata(updated.getMetadata());
+        if (updated.getDepartmentIds() != null) {
+            existing.setDepartmentIds(updated.getDepartmentIds());
+        }
+        if (updated.getProcessTypeId() != null) {
+            existing.setProcessTypeId(updated.getProcessTypeId());
+        }
         existing.setUpdatedAt(Instant.now());
 
         ProcessDefinition saved = repo.save(existing);
@@ -155,5 +161,11 @@ public class PolicyService {
     public void validate(String id) {
         ProcessDefinition def = findById(id);
         validator.validate(def);
+    }
+
+    // método save simple
+    public ProcessDefinition save(ProcessDefinition def) {
+        def.setUpdatedAt(Instant.now());
+        return repo.save(def);
     }
 }

@@ -10,8 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DepartmentLoad {
-    private String laneId;
-    private String laneName;
+    private String departmentId;
+    private String departmentName;
+    private String laneId;       // kept for backward compatibility
+    private String laneName;     // kept for backward compatibility
     private long pendingTasks;
     private long inProgressTasks;
     private long completedToday;

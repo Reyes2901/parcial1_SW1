@@ -31,10 +31,15 @@ public class TaskInstance {
     private String nodeId;
     private String nodeLabel;
     private String laneId;
+    private String departmentId;       // snapshot del departmentId del lane para analytics
 
     // Responsable
-    private String assigneeId;
-    private String assigneeRole;     // ADMIN | FUNCIONARIO | TECNICO, etc.
+    private String assigneeId;         // username resuelto en el momento de crear la tarea
+    private String assigneeRole;       // ADMIN | FUNCIONARIO | TECNICO, etc.
+    private String assignedUserId;     // alias explícito (igual a assigneeId, para claridad)
+
+    // Paralelismo
+    private String parallelGroupId;    // UUID compartido por tareas creadas desde el mismo FORK
 
     // Estado
     private String status;           // PENDING | IN_PROGRESS | COMPLETED | REJECTED
