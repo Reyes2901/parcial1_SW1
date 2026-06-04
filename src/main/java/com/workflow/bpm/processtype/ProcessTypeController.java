@@ -2,6 +2,7 @@ package com.workflow.bpm.processtype;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,7 +33,7 @@ public class ProcessTypeController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new process type")
-    public ResponseEntity<ProcessType> create(@RequestBody ProcessType processType) {
+    public ResponseEntity<ProcessType> create(@Valid @RequestBody ProcessType processType) {
         return ResponseEntity.status(201).body(processTypeService.create(processType));
     }
 
@@ -40,7 +41,7 @@ public class ProcessTypeController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update a process type")
     public ResponseEntity<ProcessType> update(@PathVariable String id,
-                                              @RequestBody ProcessType req) {
+                                              @Valid @RequestBody ProcessType req) {
         return ResponseEntity.ok(processTypeService.update(id, req));
     }
 

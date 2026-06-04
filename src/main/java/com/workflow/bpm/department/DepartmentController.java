@@ -5,6 +5,7 @@ import com.workflow.bpm.user.User;
 import com.workflow.bpm.user.dto.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,7 +31,7 @@ public class DepartmentController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new department")
-    public ResponseEntity<Department> create(@RequestBody DepartmentRequest req) {
+    public ResponseEntity<Department> create(@Valid @RequestBody DepartmentRequest req) {
         return ResponseEntity.status(201).body(departmentService.create(req));
     }
 
@@ -38,7 +39,7 @@ public class DepartmentController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update an existing department")
     public ResponseEntity<Department> update(@PathVariable String id,
-                                             @RequestBody DepartmentRequest req) {
+                                             @Valid @RequestBody DepartmentRequest req) {
         return ResponseEntity.ok(departmentService.update(id, req));
     }
 

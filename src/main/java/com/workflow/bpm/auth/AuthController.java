@@ -2,6 +2,8 @@ package com.workflow.bpm.auth;
 
 import com.workflow.bpm.user.User;
 import com.workflow.bpm.user.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,6 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping({"/auth", "/api/auth"})
 @RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Login and token generation")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -20,6 +23,7 @@ public class AuthController {
     private final JwtService jwtService;
 
     @PostMapping("/login")
+    @Operation(summary = "Authenticate user and return JWT token")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         // Buscar usuario
         User user = userRepository.findByUsername(request.getUsername())

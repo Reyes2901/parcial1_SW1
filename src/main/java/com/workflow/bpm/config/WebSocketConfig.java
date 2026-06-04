@@ -38,6 +38,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             .setAllowedOriginPatterns("*")   // solo dev — restringir en prod
             .withSockJS();                   // fallback automático
     }
+    // TODO: JWT validation should be enforced via ChannelInterceptor.
+    // Uncomment and configure the interceptor below for production use.
     //@Override
     //public void configureClientInboundChannel(org.springframework.messaging.simp.config.ChannelRegistration registration) {
         //registration.interceptors(AuthInterceptor);

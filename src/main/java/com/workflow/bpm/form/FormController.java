@@ -4,6 +4,8 @@ import com.workflow.bpm.form.dto.FormSchemaResponse;
 import com.workflow.bpm.shared.exception.ResourceNotFoundException;
 import com.workflow.bpm.task.document.TaskInstance;
 import com.workflow.bpm.task.document.TaskInstanceRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
+@Tag(name = "Forms", description = "Task form schema and submission endpoints")
 public class FormController {
 
     private final TaskInstanceRepository taskRepo;
@@ -26,6 +29,7 @@ public class FormController {
      * Angular lo usa para renderizar el formulario dinámicamente.
      */
     @GetMapping("/{id}/form")
+    @Operation(summary = "Get the form schema for a task")
     public ResponseEntity<FormSchemaResponse> getForm(
             @PathVariable String id,
             @AuthenticationPrincipal UserDetails user) {
@@ -53,6 +57,7 @@ public class FormController {
      * Valida, guarda y reanuda el motor de workflow.
      */
     @PostMapping("/{id}/form")
+    @Operation(summary = "Submit form data for a task")
     public ResponseEntity<TaskInstance> submitForm(
             @PathVariable String id,
             @RequestBody Map<String, Object> formData,
@@ -66,6 +71,7 @@ public class FormController {
      * Guardar progreso sin completar.
      */
     @PutMapping("/{id}/form/save-draft")
+    @Operation(summary = "Save form draft without completing task")
     public ResponseEntity<TaskInstance> saveDraft(
             @PathVariable String id,
             @RequestBody Map<String, Object> partialData,

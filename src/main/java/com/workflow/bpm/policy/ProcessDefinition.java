@@ -3,6 +3,7 @@ package com.workflow.bpm.policy;
 import com.workflow.bpm.shared.model.Lane;
 import com.workflow.bpm.shared.model.Node;
 import com.workflow.bpm.shared.model.Transition;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -43,6 +44,8 @@ public class ProcessDefinition {
     private String createdBy;    // userId
     private String description;
     private String processTypeId; // Referencia a ProcessType
+
+    private String bpmnXml; // Full BPMN 2.0 XML exported by bpmn-js
 
     @Builder.Default
     private List<String> departmentIds = new ArrayList<>(); // Departamentos asociados
@@ -103,6 +106,7 @@ public class ProcessDefinition {
     /**
      * Obtiene el nodo inicial (START)
      */
+    @JsonIgnore
     public Node getStartNode() {
         return nodes.stream()
                 .filter(n -> Node.TYPE_START.equals(n.getType()))
@@ -113,6 +117,7 @@ public class ProcessDefinition {
     /**
      * Obtiene todos los nodos de tipo END
      */
+    @JsonIgnore
     public List<Node> getEndNodes() {
         return nodes.stream()
                 .filter(n -> Node.TYPE_END.equals(n.getType()))
@@ -139,6 +144,7 @@ public class ProcessDefinition {
     /**
      * Verifica si el proceso está activo
      */
+    @JsonIgnore
     public boolean isActive() {
         return STATUS_ACTIVE.equals(status);
     }
@@ -146,6 +152,7 @@ public class ProcessDefinition {
     /**
      * Verifica si el proceso está en borrador
      */
+    @JsonIgnore
     public boolean isDraft() {
         return STATUS_DRAFT.equals(status);
     }
@@ -153,6 +160,7 @@ public class ProcessDefinition {
     /**
      * Verifica si el proceso está archivado
      */
+    @JsonIgnore
     public boolean isArchived() {
         return STATUS_ARCHIVED.equals(status);
     }
@@ -160,6 +168,7 @@ public class ProcessDefinition {
     /**
      * Obtiene el número total de nodos
      */
+    @JsonIgnore
     public int getTotalNodes() {
         return nodes != null ? nodes.size() : 0;
     }
@@ -167,6 +176,7 @@ public class ProcessDefinition {
     /**
      * Obtiene el número total de transiciones
      */
+    @JsonIgnore
     public int getTotalTransitions() {
         return transitions != null ? transitions.size() : 0;
     }
@@ -174,6 +184,7 @@ public class ProcessDefinition {
     /**
      * Valida si el grafo tiene una estructura básica válida
      */
+    @JsonIgnore
     public boolean hasValidStructure() {
         if (nodes == null || nodes.isEmpty()) return false;
         

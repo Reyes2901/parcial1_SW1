@@ -6,7 +6,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.NodeList;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 @Service
@@ -26,15 +36,28 @@ public class PolicyService {
             throw new ValidationException("Ya existe una política con el nombre: " + def.getName());
         }
 
+        // @Builder.Default does not apply to @NoArgsConstructor — initialize null collections
+        if (def.getLanes() == null)         def.setLanes(new ArrayList<>());
+        if (def.getNodes() == null)         def.setNodes(new ArrayList<>());
+        if (def.getTransitions() == null)   def.setTransitions(new ArrayList<>());
+        if (def.getDepartmentIds() == null) def.setDepartmentIds(new ArrayList<>());
+        if (def.getMetadata() == null)      def.setMetadata(new HashMap<>());
+
         def.setCreatedBy(userId);
         def.setStatus(ProcessDefinition.STATUS_DRAFT);
         def.setVersion("1.0");
         def.setCreatedAt(Instant.now());
         def.setUpdatedAt(Instant.now());
 
-        ProcessDefinition saved = repo.save(def);
-        log.info("Política creada: {} por {}", saved.getName(), userId);
-        return saved;
+        syncLaneDepartmentsFromXml(def);
+
+        try {
+            ProcessDefinition saved = repo.save(def);
+            log.info("Política creada: {} por {}", saved.getName(), userId);
+            return saved;
+        } catch (org.springframework.dao.DuplicateKeyException ex) {
+            throw new ValidationException("Ya existe una política con el nombre: " + def.getName());
+        }
     }
 
     /**
@@ -51,6 +74,9 @@ public class PolicyService {
         existing.setNodes(updated.getNodes());
         existing.setTransitions(updated.getTransitions());
         existing.setMetadata(updated.getMetadata());
+        if (updated.getBpmnXml() != null) {
+            existing.setBpmnXml(updated.getBpmnXml());
+        }
         if (updated.getDepartmentIds() != null) {
             existing.setDepartmentIds(updated.getDepartmentIds());
         }
@@ -58,6 +84,7 @@ public class PolicyService {
             existing.setProcessTypeId(updated.getProcessTypeId());
         }
         existing.setUpdatedAt(Instant.now());
+        syncLaneDepartmentsFromXml(existing);
 
         ProcessDefinition saved = repo.save(existing);
         log.info("Política actualizada: {}", saved.getName());
@@ -166,6 +193,45 @@ public class PolicyService {
     // método save simple
     public ProcessDefinition save(ProcessDefinition def) {
         def.setUpdatedAt(Instant.now());
+        syncLaneDepartmentsFromXml(def);
         return repo.save(def);
+    }
+
+    /**
+     * Extrae custom:departmentId de los elementos <lane> en el BPMN XML
+     * y actualiza Lane.departmentId antes de persistir.
+     */
+    private void syncLaneDepartmentsFromXml(ProcessDefinition def) {
+        if (def.getBpmnXml() == null || def.getBpmnXml().isBlank()) return;
+        if (def.getLanes() == null || def.getLanes().isEmpty()) return;
+        try {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            dbf.setNamespaceAware(true);
+            Document doc = dbf.newDocumentBuilder().parse(
+                    new ByteArrayInputStream(def.getBpmnXml().getBytes(StandardCharsets.UTF_8)));
+            NodeList laneElements = doc.getElementsByTagNameNS("*", "lane");
+            for (int i = 0; i < laneElements.getLength(); i++) {
+                Element laneEl = (Element) laneElements.item(i);
+                String laneId = laneEl.getAttribute("id");
+                String deptId = null;
+                NamedNodeMap attrs = laneEl.getAttributes();
+                for (int j = 0; j < attrs.getLength(); j++) {
+                    Attr attr = (Attr) attrs.item(j);
+                    if ("departmentId".equals(attr.getLocalName())) {
+                        deptId = attr.getValue();
+                        break;
+                    }
+                }
+                if (deptId != null && !deptId.isBlank()) {
+                    final String finalDeptId = deptId;
+                    def.getLanes().stream()
+                            .filter(l -> laneId.equals(l.getId()))
+                            .findFirst()
+                            .ifPresent(l -> l.setDepartmentId(finalDeptId));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not parse BPMN XML for lane department sync: {}", e.getMessage());
+        }
     }
 }

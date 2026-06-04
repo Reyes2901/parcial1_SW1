@@ -1,5 +1,6 @@
 package com.workflow.bpm.processtype;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -18,6 +19,7 @@ public class ProcessType {
     @Id
     private String id;
 
+    @NotBlank(message = "Process type name is required")
     @Indexed(unique = true)
     private String name;
 

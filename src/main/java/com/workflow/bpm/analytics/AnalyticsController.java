@@ -4,6 +4,8 @@ import com.workflow.bpm.analytics.dto.BottleneckReport;
 import com.workflow.bpm.analytics.dto.DashboardSummary;
 import com.workflow.bpm.analytics.dto.DepartmentLoad;
 import com.workflow.bpm.analytics.dto.PolicyStats;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import java.util.Map;
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Analytics", description = "Dashboard, bottlenecks, department load and user performance")
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
@@ -27,6 +30,7 @@ public class AnalyticsController {
      */
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get executive dashboard summary")
     public ResponseEntity<?> getDashboard() {
         log.info("📊 Solicitando dashboard...");
         try {
@@ -48,6 +52,7 @@ public class AnalyticsController {
      */
     @GetMapping("/policies/{id}/stats")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get detailed statistics for a specific policy")
     public ResponseEntity<PolicyStats> getPolicyStats(@PathVariable String id) {
         log.info("📊 Solicitando stats de política: {}", id);
         return ResponseEntity.ok(analyticsService.getPolicyStats(id));
@@ -59,6 +64,7 @@ public class AnalyticsController {
      */
     @GetMapping("/bottlenecks")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "List active bottlenecks (overdue tasks)")
     public ResponseEntity<List<BottleneckReport>> getBottlenecks() {
         log.info("📊 Solicitando cuellos de botella activos");
         return ResponseEntity.ok(analyticsService.getDashboard().getActiveBottlenecks());
@@ -70,6 +76,7 @@ public class AnalyticsController {
      */
     @GetMapping("/department-load")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get workload distribution per department")
     public ResponseEntity<List<DepartmentLoad>> getDepartmentLoad() {
         log.info("📊 Solicitando carga por departamento");
         return ResponseEntity.ok(analyticsService.getDashboard().getDepartmentLoad());
@@ -81,6 +88,7 @@ public class AnalyticsController {
      */
     @GetMapping("/users/{userId}/performance")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get performance metrics for a specific user")
     public ResponseEntity<Map<String, Object>> getUserPerformance(@PathVariable String userId) {
         log.info("📊 Solicitando rendimiento de usuario: {}", userId);
         return ResponseEntity.ok(analyticsService.getUserPerformance(userId));

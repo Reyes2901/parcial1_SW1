@@ -107,11 +107,11 @@ Archivos (`/api/files`):
 - `POST /api/files/signature`
 
 Analytics (`/api/analytics`):
-- `GET /api/analytics/dashboard`
+- `GET /api/analytics/department-load` ← **activo en frontend**
+- `GET /api/analytics/users/{userId}/performance` ← **activo en frontend**
 - `GET /api/analytics/policies/{id}/stats`
-- `GET /api/analytics/bottlenecks`
-- `GET /api/analytics/department-load`
-- `GET /api/analytics/users/{userId}/performance`
+- `GET /api/analytics/dashboard` ← ya no consumido directamente por el frontend Angular
+- `GET /api/analytics/bottlenecks` ← ya no consumido directamente por el frontend Angular
 
 WebSocket STOMP:
 - Endpoint handshake SockJS: `/ws`
@@ -126,6 +126,8 @@ Integracion externa detectada:
 - FastAPI IA: `POST {app.ai-service.url}/ai/generate-diagram` desde `AiService`.
 
 ## 5) Flujo de datos del dashboard (importante)
+
+> **Nota**: El frontend Angular actualmente consume `GET /api/analytics/department-load` y `GET /api/analytics/users/{userId}/performance`. El endpoint `GET /api/analytics/dashboard` existe en el backend pero ya no es llamado directamente por el cliente Angular.
 
 Endpoint de entrada:
 - `GET /api/analytics/dashboard` en `AnalyticsController.getDashboard()`.
@@ -211,7 +213,28 @@ Salida consolidada:
 
 6. No introducir logs con credenciales, JWT ni datos sensibles.
 
-7. No asumir frontend dentro de este repo:
+7. **Serialización Jackson — regla crítica**:
+- Las entidades con relaciones bidireccionales (`@OneToMany`/`@ManyToOne`/`@ManyToMany`) como `Policy`, `ProcessInstance`, `TaskInstance`, etc., **NUNCA** deben serializarse directamente en respuestas de listado.
+- Jackson puede lanzar `LazyInitializationException` (colecciones lazy fuera de sesión Hibernate/MongoDB) o entrar en bucle de recursión infinita, produciendo JSON malformado (`Unexpected non-whitespace character after JSON`) al que Spring adjunta su error object al final del stream ya enviado.
+- **Solución obligatoria**: mapear a un DTO plano dentro del servicio/controlador (antes del `return`) o anotar las relaciones inversas con `@JsonIgnore`. Ejemplo:
+```java
+// Opción A (recomendada): DTO en el servicio
+return policies.stream().map(p -> {
+    PolicySummaryDTO dto = new PolicySummaryDTO();
+    dto.setId(p.getId().toString());
+    dto.setName(p.getName());
+    dto.setLaneCount(p.getLanes() != null ? p.getLanes().size() : 0);
+    return dto;
+}).collect(Collectors.toList());
+
+// Opción B (rápida): @JsonIgnore en la entidad
+@JsonIgnore
+@OneToMany(mappedBy = "policy", fetch = FetchType.LAZY)
+private List<Node> nodes;
+```
+- Aplica especialmente a: `GET /api/policies/my-drafts`, `GET /api/policies`, `GET /api/workflow/instances/my-requests`, `GET /api/workflow/tasks/my-tasks`.
+
+8. No asumir frontend dentro de este repo:
 - Cualquier decision de ShellComponent/routing/modules frontend requiere otro repositorio o carpeta no presente aqui.
 
 ## 8) Comandos de desarrollo

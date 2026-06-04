@@ -117,6 +117,13 @@ public class WorkflowController {
         return ResponseEntity.ok(workflowService.getHistory(id));
     }
 
+    // --- Debug: todas las tareas de una instancia ---
+    @GetMapping("/instances/{id}/tasks")
+    @Operation(summary = "Debug: list all task instances for a given process instance")
+    public ResponseEntity<List<TaskInstance>> getTasksByInstance(@PathVariable String id) {
+        return ResponseEntity.ok(taskService.getTasksByInstance(id));
+    }
+
     // --- Bandeja del funcionario ---
     @GetMapping("/tasks/my-tasks")
     @Operation(summary = "Funcionario: list own pending/in-progress tasks")
