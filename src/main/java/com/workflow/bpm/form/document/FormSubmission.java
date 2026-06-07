@@ -27,9 +27,9 @@ public class FormSubmission {
     private String nodeId;
     private String submittedBy;
 
-    private Map<String, Object> data;     // los datos del formulario
-    private List<String> attachmentUrls;  // URLs de imágenes y archivos
-    private String signatureUrl;          // URL de la firma digital
+    private Map<String, Object> data; // los datos del formulario
+    private List<String> attachmentUrls; // URLs de imágenes y archivos
+    private String signatureUrl; // URL de la firma digital
 
     private Instant submittedAt;
 

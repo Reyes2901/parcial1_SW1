@@ -295,3 +295,42 @@ Checklist rapido de arranque:
 8. Si falla IA:
 - verificar conectividad a `AI_SERVICE_URL`.
 - revisar excepcion envuelta en `WorkflowException` desde `AiService.generateDiagram()`.
+
+## 10) Reglas WebSocket/STOMP del diagramador colaborativo
+
+### 1. Contexto del Error Crítico Detectado
+- Los logs del sistema revelaron un conflicto de hilos: `More than one TaskExecutor bean found within the context, and none is named 'taskExecutor'`. Esto bloqueaba la ejecución asíncrona de la persistencia de las políticas.
+- El flujo se quedaba atrapado en el canal de entrada (`boundChannel`), imprimiendo logs de "reenviado en memoria", pero NUNCA salía hacia el broker de transmisión.
+
+### 2. Reglas de Configuración Obligatorias (`WebSocketConfig.java`)
+- Se debe garantizar la existencia de un Bean de tipo 'TaskExecutor' marcado con `@Primary` y nombrado exactamente "taskExecutor". Esto resuelve la colisión entre el `clientInboundChannelExecutor` y el `clientOutboundChannelExecutor`.
+- El broker simple debe tener habilitados los prefijos `/topic` y `/queue`.
+
+### 3. Reglas del Controlador de Colaboración (`@MessageMapping`)
+- **PROHIBIDO** limitar el flujo a procesamiento local o logs en consola ("reenviado en memoria"). Cada evento recibido en el canal de entrada DEBE generar un broadcast inmediato de salida.
+- Es obligatorio inyectar `SimpMessagingTemplate`.
+- Cada vez que se procese un evento del diagramador (`ELEMENT_LOCK`, `ELEMENT_DRAG`, `ELEMENT_UNLOCK`, `ELEMENT_COMMIT`), se debe despachar el DTO al tópico dinámico correcto usando:
+  `messagingTemplate.convertAndSend("/topic/policy/" + payload.getPolicyId(), payload);`
+
+### 4. Manejo de Persistencia Asíncrona
+- El guardado del estado del diagrama en la base de datos (BPMN XML) debe seguir siendo asíncrono (`@Async`), pero jamás debe retrasar o bloquear el envío del mensaje por el `messagingTemplate`. El broadcast a los usuarios tiene prioridad de milisegundos para evitar lag visual en el frontend.
+
+A partir de ahora, cualquier refactorización del sistema de tiempo real debe validar que se cumpla el broadcast de salida.
+
+## 11) Control de Concurrencia del diagramador colaborativo (Optimistic Locking)
+
+Contexto del error: Condición de Carrera. Si un usuario envía un XML desactualizado justo después de que otro creó un componente, el backend lo persistía ciegamente y borraba el componente nuevo. Estas reglas son obligatorias para proteger los datos.
+
+### 1. Control de Versiones del Diagrama (Optimistic Locking)
+- La entidad de la Política o el payload del WebSocket debe manejar un contador de versión secuencial (`version` de tipo Long/int) o un timestamp estricto de última modificación (`lastUpdated`).
+- Cada `ELEMENT_COMMIT` enviado por el frontend debe incluir la versión del diagrama sobre la cual el usuario realizó sus cambios.
+
+### 2. Validar antes de Persistir y Reenviar
+- Cuando el `PolicyCollaborationController` reciba un `ELEMENT_COMMIT`, debe validar la versión del payload entrante contra la versión actual en la base de datos o en la caché de la sesión colaborativa:
+  - **Si la versión coincide o es más nueva:** Se acepta el XML, se incrementa la versión en el backend, se persiste asíncronamente y se hace el broadcast del nuevo XML y el nuevo número de versión a todos los usuarios.
+  - **Si la versión es obsoleta (menor a la del servidor):** Significa que el usuario envió un estado viejo (por ejemplo, porque movió su pantalla antes de recibir el cambio del otro). El backend DEBE rechazar ese commit, ignorar el XML viejo y enviarle de vuelta al usuario infractor un evento de rechazo (`CREATION_DESYNC_REFRESH`) forzando a su frontend a recargar el XML real del servidor.
+
+### 3. Implementación de referencia (no romper)
+- La comparación versión-entrante vs versión-autoritativa y su incremento DEBEN ser atómicos (operación única). En este repo se hace vía `PolicyCollaborationService.validateAndBump(policyId, incomingVersion)` usando `ConcurrentHashMap.compute` por `policyId`, evitando la ventana de carrera entre dos commits simultáneos.
+- El contador autoritativo vive en la caché en memoria (`diagramVersions`) y se persiste en `ProcessDefinition.diagramVersion` (campo Long, distinto del `version` semántico String).
+- El evento de rechazo `CREATION_DESYNC_REFRESH` se difunde por `/topic/policy/{policyId}` con `sender` = usuario infractor; el frontend debe recargar el XML del servidor únicamente cuando `action === CREATION_DESYNC_REFRESH && sender === currentUser`.

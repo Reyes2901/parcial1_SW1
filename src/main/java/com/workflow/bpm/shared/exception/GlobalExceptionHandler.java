@@ -2,6 +2,7 @@ package com.workflow.bpm.shared.exception;
 
 import com.workflow.bpm.workflow.engine.WorkflowException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,6 +14,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -117,6 +119,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
+        // Sin este log, cualquier excepción no mapeada se convertía en un 500 mudo
+        // (sin stack trace en consola), ocultando la causa real del fallo.
+        log.error("Excepción no controlada en {} {}: {}",
+                request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
         return ResponseEntity.status(500).body(ErrorResponse.builder()
                 .timestamp(Instant.now())
                 .status(500)

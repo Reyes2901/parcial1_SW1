@@ -1,0 +1,28 @@
+Actúa como un Arquitecto de Software Backend Senior experto en Spring Boot, Spring Security y Mensajería en Tiempo Real con WebSockets (STOMP/SockJS).
+
+### 🚨 EL PROBLEMA TÉCNICO A CORREGIR (DIAGNÓSTICO)
+Nuestra aplicación de gestión de procesos (BPM) tiene un módulo de diagramado colaborativo. Actualmente, el Backend recibe un string XML masivo en cada pequeño movimiento del cursor de los usuarios a través de un `@MessageMapping`, lo que sobrecarga la memoria (JVM), satura los hilos de ejecución de TomCat (`nio-8080-exec`) y produce retrasos en la red. 
+
+Además, el servidor retransmite el mensaje a todos los usuarios suscritos al `/topic`, incluyendo al emisor original, lo que genera bucles de eco infinitos y colisiones de estado en las bases de datos (MongoDB).
+
+### 🛠️ ARQUITECTURA DE SOLUCIÓN REQUERIDA
+Debes refactorización el controlador de WebSockets y los servicios relacionados para implementar un Broker de Memoria Ultra-Rápido y Discriminación de Acciones por Eventos.
+
+Implementa estrictamente los siguientes cambios de código:
+
+#### PASO 1: Creación del DTO de Mensajería Estructurada
+Modifica o crea el DTO del mensaje colaborativo para que soporte acciones específicas mediante un Enum:
+```java
+public class CollaborativeMessageDTO {
+    private ActionType action; // ENUM: ELEMENT_DRAG, ELEMENT_COMMIT, ELEMENT_LOCK, ELEMENT_UNLOCK
+    private String policyId;
+    private String sender;
+    private String elementId;
+    private Geometry geometry; // Subclase con campos x, y, width, height (Opcional)
+    private String bpmnXml;    // SOLO se procesará cuando la acción sea ELEMENT_COMMIT
+
+    public enum ActionType {
+        ELEMENT_DRAG, ELEMENT_COMMIT, ELEMENT_LOCK, ELEMENT_UNLOCK
+    }
+    // Getters y Setters...
+}

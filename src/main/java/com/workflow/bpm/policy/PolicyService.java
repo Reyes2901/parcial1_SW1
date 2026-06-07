@@ -36,12 +36,18 @@ public class PolicyService {
             throw new ValidationException("Ya existe una política con el nombre: " + def.getName());
         }
 
-        // @Builder.Default does not apply to @NoArgsConstructor — initialize null collections
-        if (def.getLanes() == null)         def.setLanes(new ArrayList<>());
-        if (def.getNodes() == null)         def.setNodes(new ArrayList<>());
-        if (def.getTransitions() == null)   def.setTransitions(new ArrayList<>());
-        if (def.getDepartmentIds() == null) def.setDepartmentIds(new ArrayList<>());
-        if (def.getMetadata() == null)      def.setMetadata(new HashMap<>());
+        // @Builder.Default does not apply to @NoArgsConstructor — initialize null
+        // collections
+        if (def.getLanes() == null)
+            def.setLanes(new ArrayList<>());
+        if (def.getNodes() == null)
+            def.setNodes(new ArrayList<>());
+        if (def.getTransitions() == null)
+            def.setTransitions(new ArrayList<>());
+        if (def.getDepartmentIds() == null)
+            def.setDepartmentIds(new ArrayList<>());
+        if (def.getMetadata() == null)
+            def.setMetadata(new HashMap<>());
 
         def.setCreatedBy(userId);
         def.setStatus(ProcessDefinition.STATUS_DRAFT);
@@ -61,11 +67,14 @@ public class PolicyService {
     }
 
     /**
-     * Actualiza una política existente (solo el creador puede hacerlo)
+     * Actualiza una política existente (Permite edición colaborativa de políticas
+     * públicas)
      */
     public ProcessDefinition update(String id, ProcessDefinition updated, String userId) {
-        ProcessDefinition existing = repo.findByIdAndCreatedBy(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada o no tienes permisos"));
+        // 🔄 CAMBIO AQUÍ: Buscamos solo por ID, ya no filtramos obligatoriamente por el
+        // creador
+        ProcessDefinition existing = repo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Política no encontrada con el ID: " + id));
 
         // Actualizar campos
         existing.setName(updated.getName());
@@ -74,8 +83,13 @@ public class PolicyService {
         existing.setNodes(updated.getNodes());
         existing.setTransitions(updated.getTransitions());
         existing.setMetadata(updated.getMetadata());
-        if (updated.getBpmnXml() != null) {
-            existing.setBpmnXml(updated.getBpmnXml());
+
+        // Defensa de concurrencia: el XML colaborativo es fuente de verdad del
+        // canal WebSocket y no debe ser sobrescrito por PUT REST.
+        String incomingXml = updated.getBpmnXml();
+        if (incomingXml != null && !incomingXml.isBlank()) {
+            log.warn("PUT policy '{}' ignoró bpmnXml entrante de '{}' para preservar XML colaborativo",
+                    id, userId);
         }
         if (updated.getDepartmentIds() != null) {
             existing.setDepartmentIds(updated.getDepartmentIds());
@@ -87,7 +101,7 @@ public class PolicyService {
         syncLaneDepartmentsFromXml(existing);
 
         ProcessDefinition saved = repo.save(existing);
-        log.info("Política actualizada: {}", saved.getName());
+        log.info("Política actualizada en Base de Datos: {}", saved.getName());
         return saved;
     }
 
@@ -202,8 +216,10 @@ public class PolicyService {
      * y actualiza Lane.departmentId antes de persistir.
      */
     private void syncLaneDepartmentsFromXml(ProcessDefinition def) {
-        if (def.getBpmnXml() == null || def.getBpmnXml().isBlank()) return;
-        if (def.getLanes() == null || def.getLanes().isEmpty()) return;
+        if (def.getBpmnXml() == null || def.getBpmnXml().isBlank())
+            return;
+        if (def.getLanes() == null || def.getLanes().isEmpty())
+            return;
         try {
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(true);

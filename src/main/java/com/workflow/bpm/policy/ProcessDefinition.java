@@ -47,6 +47,13 @@ public class ProcessDefinition {
 
     private String bpmnXml; // Full BPMN 2.0 XML exported by bpmn-js
 
+    /**
+     * Contador secuencial del diagrama colaborativo (optimistic locking).
+     * Distinto del campo {@code version} (semántico, String). Se incrementa en
+     * cada ELEMENT_COMMIT aceptado para detectar condiciones de carrera.
+     */
+    private Long diagramVersion;
+
     @Builder.Default
     private List<String> departmentIds = new ArrayList<>(); // Departamentos asociados
 
