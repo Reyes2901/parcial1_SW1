@@ -3,9 +3,13 @@ package com.workflow.bpm.user.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-
+import jakarta.validation.constraints.Email;
 @Data
 public class UserCreateRequest {
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email address")
+    private String email;
 
     @NotBlank(message = "Username is required")
     @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")

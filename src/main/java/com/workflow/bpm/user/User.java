@@ -18,6 +18,9 @@ public class User {
     private String id;
 
     @Indexed(unique = true)
+    @JsonProperty("email")
+    private String email; 
+
     @JsonProperty("username")
     private String username;
 
@@ -28,4 +31,4 @@ public class User {
     private String role;
 
     private String departmentId;
-}
+}

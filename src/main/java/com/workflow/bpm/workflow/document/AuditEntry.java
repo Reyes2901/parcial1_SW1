@@ -28,4 +28,12 @@ public class AuditEntry {
     public static final String ACTION_REJECTED = "REJECTED";
     public static final String ACTION_CANCELLED = "CANCELLED";
     public static final String ACTION_SYSTEM = "SYSTEM";
+
+    // Constantes para eventos del Repositorio Documental
+    public static final String ACTION_DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED";
+    public static final String ACTION_DOCUMENT_DELETED = "DOCUMENT_DELETED";
+    public static final String ACTION_DOCUMENT_DOWNLOADED = "DOCUMENT_DOWNLOADED";
+    public static final String ACTION_DOCUMENT_PERMISSION_GRANTED = "DOCUMENT_PERMISSION_GRANTED";
+    public static final String ACTION_DOCUMENT_PERMISSION_REVOKED = "DOCUMENT_PERMISSION_REVOKED";
+    public static final String ACTION_DOCUMENT_SIGNED = "DOCUMENT_SIGNED";
 }

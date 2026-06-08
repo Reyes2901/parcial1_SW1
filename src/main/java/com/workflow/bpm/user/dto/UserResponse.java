@@ -8,6 +8,7 @@ import lombok.Data;
 @Builder
 public class UserResponse {
     private String id;
+    private String email;
     private String username;
     private String role;
     private String departmentId;
@@ -15,6 +16,7 @@ public class UserResponse {
     public static UserResponse from(User user) {
         return UserResponse.builder()
                 .id(user.getId())
+                .email(user.getEmail())
                 .username(user.getUsername())
                 .role(user.getRole())
                 .departmentId(user.getDepartmentId())

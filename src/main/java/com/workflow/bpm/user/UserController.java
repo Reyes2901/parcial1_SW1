@@ -30,13 +30,14 @@ public class UserController {
     @PostMapping
     @Operation(summary = "Register a new user")
     public ResponseEntity<?> create(@Valid @RequestBody UserCreateRequest req) {
-        if (repo.existsByUsername(req.getUsername())) {
+        if (repo.existsByEmail(req.getEmail())) {
             Map<String, String> error = new HashMap<>();
-            error.put("error", "Username already exists");
+            error.put("error", "Email already exists");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
 
         User user = User.builder()
+                .email(req.getEmail())
                 .username(req.getUsername())
                 .password(passwordEncoder.encode(req.getPassword()))
                 .role(req.getRole() != null && !req.getRole().isEmpty() ? req.getRole() : "USER")
@@ -80,6 +81,22 @@ public class UserController {
     public ResponseEntity<UserResponse> getById(@PathVariable String id) {
         return repo.findById(id)
                 .map(user -> ResponseEntity.ok(UserResponse.from(user)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+    @PutMapping("/{id}/department")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Reassign or update an existing user's department")
+    public ResponseEntity<UserResponse> updateDepartment(
+            @PathVariable String id,
+            @Valid @RequestBody com.workflow.bpm.user.dto.UserDepartmentUpdateRequest req) {
+        
+        return repo.findById(id)
+                .map(user -> {
+                    // Actualiza el campo sin tocar el resto del documento
+                    user.setDepartmentId(req.getDepartmentId());
+                    User updatedUser = repo.save(user);
+                    return ResponseEntity.ok(UserResponse.from(updatedUser));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 }

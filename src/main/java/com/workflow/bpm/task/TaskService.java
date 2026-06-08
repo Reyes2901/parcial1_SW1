@@ -1,5 +1,6 @@
 package com.workflow.bpm.task;
 
+import com.workflow.bpm.document.DocumentRepositoryService;
 import com.workflow.bpm.notification.NotificationService;
 import com.workflow.bpm.shared.exception.ResourceNotFoundException;
 import com.workflow.bpm.task.document.TaskInstance;
@@ -35,6 +36,7 @@ public class TaskService {
     private final UserRepository userRepo;
     private final WorkflowEngine engine;
     private final NotificationService notificationService;
+    private final DocumentRepositoryService documentRepositoryService;
     /**
      * Verifica si el usuario tiene permiso para trabajar la tarea
      */ 
@@ -99,6 +101,9 @@ public class TaskService {
                 .formData(formData)
                 .build());
         instanceRepo.save(instance);
+
+        // Asociación automática de documentos al repositorio (no debe romper el flujo)
+        documentRepositoryService.autoAttachFromCompletedTask(task, instance, formData, userId);
 
         engine.resumeAfterTask(instance.getId(), task.getNodeId(), formData);
         notificationService.notifyBottleneck(task);
